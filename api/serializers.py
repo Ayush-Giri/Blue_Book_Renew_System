@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from user_profile.models import UserProfile
+# from vehicles import models as user_vehicle_models
+from vehicles.models import UserVehicle, VehicleType, VehicleFuelType, VehicleOwnership
 
 User = get_user_model()
 
@@ -138,6 +140,139 @@ class UserActiveSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("is_active",)
+
+
+from rest_framework import serializers
+from vehicles import models as user_vehicles_models
+
+
+# --- Helper Serializers for Nested Objects ---
+class VehicleTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_vehicles_models.VehicleType
+        fields = ['id', 'name']
+
+
+class VehicleFuelTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_vehicles_models.VehicleFuelType
+        fields = ['id', 'name']
+
+
+class VehicleOwnershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_vehicles_models.VehicleOwnership
+        fields = ['id', 'name']
+
+
+class VehicleCapacitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_vehicles_models.VehicleCapacity
+        fields = ("id", "capacity_value")
+
+
+# --- Main Vehicle Serializer ---
+class UserVehicleSerializer(serializers.ModelSerializer):
+    # Display objects for GET requests
+    vehicle_type_detail = VehicleTypeSerializer(source='vehicle_type', read_only=True)
+    fuel_type_detail = VehicleFuelTypeSerializer(source='fuel_type', read_only=True)
+    ownership_type_detail = VehicleOwnershipSerializer(source='ownership_type', read_only=True)
+    engine_capacity_detail = VehicleCapacitySerializer(source='engine_capacity', read_only=True)
+
+    # Read-only fields
+    user = serializers.ReadOnlyField(source='user.username')
+    current_tax_amount = serializers.ReadOnlyField()
+    expiry_date = serializers.ReadOnlyField()
+
+    class Meta:
+        model = user_vehicles_models.UserVehicle
+        # fields = [
+        #     'id', 'user', 'brand_and_model', 'color', 'chassis_number',
+        #     'engine_number', 'issue_date', 'expiry_date', 'vehicle_number' 'engine_capacity',
+        #     'current_tax_amount',
+        #     'vehicle_type', 'ownership_type', 'fuel_type',  # Used for POST (IDs)
+        #     'vehicle_type_detail', 'ownership_type_detail', 'fuel_type_detail'  # Used for GET (Objects)
+        # ]
+        fields = "__all__"
+        # Hide the ID fields from GET response to keep it clean, but allow them for POST
+        extra_kwargs = {
+            'vehicle_type': {'write_only': True},
+            'ownership_type': {'write_only': True},
+            'fuel_type': {'write_only': True},
+            'engine_capacity': {'write_only': True},
+        }
+
+
+# class VehicleTypeSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = user_vehicles_models.VehicleType
+#         fields = ("name", )
+
+
+class VehicleOwnerShipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_vehicles_models.VehicleOwnership
+        fields = ("id", "name", )
+
+#
+# class VehicleFuelTypeSerializer(serializers.ModelSerializer):
+#     # This tells DRF: We are working with a Django model
+#     # VehicleFuelType table in the database
+#     # Only
+#     # the
+#     # name
+#     # field is exposed
+#     # Serializer
+#     # will:
+#     #
+#     # ✅ Read
+#     # only
+#     # name
+#     # from the model
+#     #
+#     # ✅ Accept
+#     # only
+#     # name
+#     # from incoming JSON
+#     class Meta:
+#         model = user_vehicles_models.VehicleFuelType
+#         fields = ("name", )
+
+
+class VehicleEngineCapacitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_vehicles_models.VehicleCapacity
+        fields = ("id", "capacity_value",)
+
+
+class AdminGetAllVehiclesSerializer(serializers.ModelSerializer):
+    # Nesting the user details so Admin knows who owns what
+    user_details = serializers.SerializerMethodField()
+
+    # Human-readable details for the dropdown fields
+    vehicle_type_name = serializers.ReadOnlyField(source='vehicle_type.name')
+    fuel_type_name = serializers.ReadOnlyField(source='fuel_type.name')
+    ownership_type_name = serializers.ReadOnlyField(source='ownership_type.name')
+    capacity_value = serializers.ReadOnlyField(source='engine_capacity.capacity_value')
+
+    class Meta:
+        model = user_vehicles_models.UserVehicle
+        fields = (
+            'id', 'user_details', 'brand_and_model', 'vehicle_number',
+            'chassis_number', 'engine_number', 'color', 'issue_date',
+            'expiry_date', 'current_tax_amount', 'vehicle_type_name',
+            'fuel_type_name', 'ownership_type_name', 'capacity_value'
+        )
+
+    def get_user_details(self, obj):
+        return {
+            "id": obj.user.id,
+            "username": obj.user.username,
+            "phone": obj.user.phone_number,
+            "email": obj.user.email
+        }
+
+
 
 
 
