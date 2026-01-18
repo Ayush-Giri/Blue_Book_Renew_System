@@ -16,7 +16,6 @@ urlpatterns = [
     path("vehicle-ownerships/", views.VehicleOwnershipView.as_view(), name="vehicle-ownerships"),
     path("vehicle-fuel-types/", views.VehicleFuelTypeView.as_view(), name="vehicle-fuel-types"),
     path("vehicle-engine-capacities/", views.VehicleEngineCapacityView.as_view(), name="vehicle-engine-capacities"),
-
     # path("admin/users/active-status", views.ToggleUserStatusView.as_view())
 ]
 
