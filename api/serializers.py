@@ -280,6 +280,6 @@ class AdminGetAllVehiclesSerializer(serializers.ModelSerializer):
 class CollectorModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = CollectorModel
-        fields = ("user", "collection_center_name", "collection_center_address", "collection_center_number")
+        fields = ("collection_center_name", "collection_center_address", "collection_center_number")
 
 

@@ -305,7 +305,7 @@ class AdminAllVehiclesListView(generics.ListAPIView):
 
 
 class CollectorView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
     def get(self, request, user_id):
         try:
             collector = CollectorModel.objects.get(user_id=user_id)
@@ -348,6 +348,30 @@ class CollectorView(APIView):
         else:
             return Response(
                 {"error": "user is not a collector"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def patch(self, request, user_id):
+        try:
+            collector_profile = CollectorModel.objects.get(user=request.user)
+            serializer = CollectorModelSerializer(collector_profile, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "updated successfully", "data":serializer.data},
+                    status=status.HTTP_200_OK
+                )
+            return Response(
+                {
+                    "error": "collector profile not found",
+
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except CollectorModel.DoesNotExist:
+            return Response(
+                {"error": "Collector profile not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
