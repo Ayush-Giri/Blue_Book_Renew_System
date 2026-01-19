@@ -6,6 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from user_profile.models import UserProfile
 # from vehicles import models as user_vehicle_models
 from vehicles.models import UserVehicle, VehicleType, VehicleFuelType, VehicleOwnership
+from collector.models import CollectorModel
 
 User = get_user_model()
 
@@ -64,7 +65,7 @@ class PasswordSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ("image", "address", "name")
+        fields = ("user", "image", "address", "name")
 
     def get_image(self, obj):
         request = self.context.get("request")
@@ -127,6 +128,8 @@ class UserReadSerializer(serializers.ModelSerializer):
         model = User
         fields = ("id",
                   "username",
+                  "first_name",
+                  "last_name",
                   "email",
                   "phone_number",
                   "is_active",
@@ -212,7 +215,8 @@ class UserVehicleSerializer(serializers.ModelSerializer):
 class VehicleOwnerShipSerializer(serializers.ModelSerializer):
     class Meta:
         model = user_vehicles_models.VehicleOwnership
-        fields = ("id", "name", )
+        fields = ("id", "name",)
+
 
 #
 # class VehicleFuelTypeSerializer(serializers.ModelSerializer):
@@ -273,6 +277,9 @@ class AdminGetAllVehiclesSerializer(serializers.ModelSerializer):
         }
 
 
-
+class CollectorModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CollectorModel
+        fields = ("user", "collection_center_name", "collection_center_address", "collection_center_number")
 
 

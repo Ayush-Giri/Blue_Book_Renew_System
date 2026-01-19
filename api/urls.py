@@ -9,6 +9,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('signup/', views.SignupView.as_view()),
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    path("collector-profile/<int:user_id>/", views.CollectorView.as_view()),
     path("admin/users/", views.UserReadView.as_view()),
     path('admin/all-vehicles/', views.AdminAllVehiclesListView.as_view(), name='admin-all-vehicles'),
     path("admin/users/<int:user_id>/active-status/", views.UserReadView.as_view()),

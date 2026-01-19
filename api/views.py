@@ -17,6 +17,8 @@ from .serializers import VehicleTypeSerializer, VehicleOwnerShipSerializer, Vehi
 from rest_framework import generics, filters
 from .permissions import IsAdmin  # Assuming you have this custom permission
 from api.serializers import AdminGetAllVehiclesSerializer
+from api.serializers import CollectorModelSerializer
+from collector.models import CollectorModel
 
 
 # Create your views here.
@@ -110,6 +112,7 @@ class ProfileView(APIView):
 
         return Response(
             {
+                "id": request.user.id,
                 "name": profile.name,
                 "email": request.user.email,
                 "phone_number": request.user.phone_number,
@@ -299,3 +302,57 @@ class AdminAllVehiclesListView(generics.ListAPIView):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['vehicle_number', 'chassis_number', 'user__username', 'user__phone_number']
     ordering_fields = ['issue_date', 'current_tax_amount']
+
+
+class CollectorView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, user_id):
+        try:
+            collector = CollectorModel.objects.get(user_id=user_id)
+            serializer = CollectorModelSerializer(collector)
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK
+            )
+        except CollectorModel.DoesNotExist:
+            return Response(
+                {"message": "collector profile doesnot exist for this user"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            # Step 3: If it's NOT a "DoesNotExist" error, tell us what it actually is!
+            return Response(
+                {"error": "Serializer or Server Error", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+    def post(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        if user.is_collector:
+            serializer = CollectorModelSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(user=user)
+                return Response(
+                    {"message": "collector successfully created"},
+                    status=status.HTTP_201_CREATED
+                )
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(
+                {"error": "user is not a collector"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+
+
+
+
