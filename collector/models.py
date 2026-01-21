@@ -11,6 +11,7 @@ class CollectorModel(models.Model):
     collection_center_name = models.CharField(max_length=100)
     collection_center_address = models.CharField(max_length=100)
     collection_center_number = models.CharField(max_length=100)
+    is_pickup_available = models.BooleanField()
 
     def __str__(self):
         return f" collector:{self.user.username} | " \

@@ -37,6 +37,9 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    "renew_request",
+    "service_charge",
+    "insurance",
     "collector",
     "vehicles",
     "user_profile",

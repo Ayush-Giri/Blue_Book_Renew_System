@@ -13,12 +13,19 @@ from rest_framework import viewsets, permissions
 from vehicles import models as user_vehicles_models
 from .serializers import UserVehicleSerializer
 from vehicles.models import VehicleType, VehicleOwnership, VehicleFuelType, VehicleCapacity
-from .serializers import VehicleTypeSerializer, VehicleOwnerShipSerializer, VehicleFuelTypeSerializer, VehicleEngineCapacitySerializer
+from .serializers import VehicleTypeSerializer, VehicleOwnerShipSerializer, VehicleFuelTypeSerializer, \
+    VehicleEngineCapacitySerializer
 from rest_framework import generics, filters
 from .permissions import IsAdmin  # Assuming you have this custom permission
 from api.serializers import AdminGetAllVehiclesSerializer
 from api.serializers import CollectorModelSerializer
 from collector.models import CollectorModel
+from api.serializers import InsuranceModelSerializer
+from insurance.models import InsuranceModel
+from service_charge.models import ServiceChargeModel
+from api.serializers import ServiceChargeSerializer
+from renew_request.models import RenewRequest
+from api.serializers import RenewRequestSerializer
 
 
 # Create your views here.
@@ -57,7 +64,7 @@ class VehicleFuelTypeView(APIView):
         serializer = VehicleFuelTypeSerializer(fuel_type, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self,request):
+    def post(self, request):
         serializer = VehicleFuelTypeSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -71,7 +78,7 @@ class VehicleEngineCapacityView(APIView):
         serializer = VehicleEngineCapacitySerializer(engine_capacity, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self ,request):
+    def post(self, request):
         serializer = VehicleEngineCapacitySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -83,10 +90,11 @@ class SignupView(APIView):
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user_id = serializer.save().id
             # when we return Response object from serializer views we are essentially returning json
             return Response(
-                {"message": "User created successfully"},
+                {"message": "User created successfully",
+                 "id": user_id},
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -284,9 +292,6 @@ class UserVehicleViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-
-
-
 class AdminAllVehiclesListView(generics.ListAPIView):
     """
     Returns a list of ALL vehicles registered in the system.
@@ -306,6 +311,7 @@ class AdminAllVehiclesListView(generics.ListAPIView):
 
 class CollectorView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
+
     def get(self, request, user_id):
         try:
             collector = CollectorModel.objects.get(user_id=user_id)
@@ -325,7 +331,6 @@ class CollectorView(APIView):
                 {"error": "Serializer or Server Error", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
     def post(self, request, user_id):
         try:
@@ -353,13 +358,13 @@ class CollectorView(APIView):
 
     def patch(self, request, user_id):
         try:
-            collector_profile = CollectorModel.objects.get(user=request.user)
+            collector_profile = CollectorModel.objects.get(user_id=user_id)
             serializer = CollectorModelSerializer(collector_profile, data=request.data, partial=True)
 
             if serializer.is_valid():
                 serializer.save()
                 return Response(
-                    {"message": "updated successfully", "data":serializer.data},
+                    {"message": "updated successfully", "data": serializer.data},
                     status=status.HTTP_200_OK
                 )
             return Response(
@@ -376,7 +381,187 @@ class CollectorView(APIView):
             )
 
 
+class InsuranceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response(
+                {"detail": "Only admins can add insurance providers"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        else:
+            serializer = InsuranceModelSerializer(data=request.data)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "Insurance Provider added successfully"},
+                    status=status.HTTP_201_CREATED
+                )
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def get(self, request):
+        all_insurance_providers = InsuranceModel.objects.all()
+        serializer = InsuranceModelSerializer(all_insurance_providers, many=True)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+
+class InsurancePatchView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def patch(self, request, id):
+        try:
+            insurance = InsuranceModel.objects.get(id=id)
+            serializer = InsuranceModelSerializer(insurance, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "updated successfully"},
+                    status=status.HTTP_200_OK
+                )
+            return Response(
+                {"message": "Does not exist"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except InsuranceModel.DoesNotExist:
+            return Response(
+                {"message": "Not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 
 
+class ServiceChargeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        all_service_charge = ServiceChargeModel.objects.all()
+        serializer = ServiceChargeSerializer(all_service_charge, many=True)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def post(self, request):
+        if request.user.is_staff:
+            serializer = ServiceChargeSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "Service Charge Created Successfully"},
+                    status=status.HTTP_201_CREATED
+                )
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            return Response(
+                {"message": "invalid"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ServiceChargePatchView(APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request, id):
+        if request.user.is_staff:
+            try:
+                service_charge = ServiceChargeModel.objects.get(id=id)
+                serializer = ServiceChargeSerializer(service_charge, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(
+                        {"message": "updated successfully"},
+                        status=status.HTTP_200_OK
+                    )
+                else:
+                    return Response(
+                        serializer.errors,
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except ServiceChargeModel.DoesNotExist:
+                return Response(
+                    {"message": "no such record for service charge"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            return Response(
+                {"message": "only accessible to admin"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+class RenewRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Admins see all requests, Users only see their own
+        if request.user.is_staff:
+            queryset = RenewRequest.objects.all()
+        else:
+            queryset = RenewRequest.objects.filter(user=request.user)
+
+        serializer = RenewRequestSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        # When creating, we manually assign the logged-in user
+        serializer = RenewRequestSerializer(data=request.data)
+
+        if serializer.is_valid():
+            # Security Check: Ensure the vehicle belongs to the person logged in
+            vehicle = serializer.validated_data['vehicle']
+            if vehicle.user != request.user:
+                return Response(
+                    {"detail": "You cannot request renewal for a vehicle you do not own."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Auto-fetch the latest service charge if not provided
+            service_charge = ServiceChargeModel.objects.last()
+
+            serializer.save(user=request.user, service_charge=service_charge)
+            return Response(
+                {"message": "Renew request submitted successfully"},
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, id):
+        try:
+            renew_request = RenewRequest.objects.get(id=id)
+
+            # Permission: Only Admins can change the status (Processing/Completed)
+            # Users can only update their own requests if they are still 'pending'
+            if not request.user.is_staff and renew_request.user != request.user:
+                return Response(status=status.HTTP_403_FORBIDDEN)
+
+            serializer = RenewRequestSerializer(
+                renew_request,
+                data=request.data,
+                partial=True
+            )
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "Renew request updated successfully"},
+                    status=status.HTTP_200_OK
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except RenewRequest.DoesNotExist:
+            return Response(
+                {"detail": "Request not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )

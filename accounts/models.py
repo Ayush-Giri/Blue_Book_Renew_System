@@ -21,5 +21,4 @@ class User(AbstractUser):
     is_collector = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.username
-
+        return f"{self.username} | {self.email}"
