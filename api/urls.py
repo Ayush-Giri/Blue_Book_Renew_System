@@ -10,7 +10,7 @@ urlpatterns = [
     path('renew-requests/', views.RenewRequestView.as_view(), name='renew-request-list'),
     path('renew-requests/<int:id>/', views.RenewRequestView.as_view(), name='renew-request-detail'),
     path("service-charge/", views.ServiceChargeView.as_view()),
-    path("service-charge/<int:id>", views.ServiceChargePatchView.as_view()),
+    path("service-charge/<int:id>/", views.ServiceChargePatchView.as_view()),
     path("insurance/", views.InsuranceView.as_view()),
     path("insurance/<int:id>/", views.InsurancePatchView.as_view()),
     path('signup/', views.SignupView.as_view()),
