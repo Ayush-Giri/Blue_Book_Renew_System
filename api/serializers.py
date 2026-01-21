@@ -289,7 +289,7 @@ class CollectorModelSerializer(serializers.ModelSerializer):
 class InsuranceModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = InsuranceModel
-        fields = ("id", "name", "price")
+        fields = ("id", "name", "price", "is_active")
 
 
 class ServiceChargeSerializer(serializers.ModelSerializer):

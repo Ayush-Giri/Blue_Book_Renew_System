@@ -440,34 +440,40 @@ class InsurancePatchView(APIView):
 
 
 class ServiceChargeView(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        all_service_charge = ServiceChargeModel.objects.all()
-        serializer = ServiceChargeSerializer(all_service_charge, many=True)
+        all_service_charge = ServiceChargeModel.objects.get(id=1)
+        serializer = ServiceChargeSerializer(all_service_charge)
         return Response(
             serializer.data,
             status=status.HTTP_200_OK
         )
 
     def post(self, request):
-        if request.user.is_staff:
-            serializer = ServiceChargeSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(
-                    {"message": "Service Charge Created Successfully"},
-                    status=status.HTTP_201_CREATED
-                )
+        if len(ServiceChargeModel.objects.all()) >= 1:
             return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
+                {"message": "cannot add more service charge"},
+                status=status.HTTP_403_FORBIDDEN
             )
         else:
-            return Response(
-                {"message": "invalid"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            if request.user.is_staff:
+                serializer = ServiceChargeSerializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(
+                        {"message": "Service Charge Created Successfully"},
+                        status=status.HTTP_201_CREATED
+                    )
+                return Response(
+                    serializer.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            else:
+                return Response(
+                    {"message": "invalid"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
 
 class ServiceChargePatchView(APIView):
