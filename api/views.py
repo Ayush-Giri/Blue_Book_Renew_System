@@ -1,10 +1,5 @@
 from api.serializers import SignupSerializer
 from django.contrib.auth import get_user_model
-from api.permissions import IsAdmin
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
 from user_profile.models import UserProfile
 from api.serializers import ProfileSerializer, PasswordSerializer, UserReadSerializer
 from api.permissions import IsActiveUser
@@ -26,6 +21,14 @@ from service_charge.models import ServiceChargeModel
 from api.serializers import ServiceChargeSerializer
 from renew_request.models import RenewRequest
 from api.serializers import RenewRequestSerializer
+from api.serializers import CollectionCenterSerializer
+from collector.models import CollectionCenterModel
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from api.serializers import GetAllCollectorSerializer
 
 
 # Create your views here.
@@ -99,6 +102,132 @@ class SignupView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+# class AdminProfileEdit(APIView):
+#     permission_classes = [IsAuthenticated, IsAdmin]
+#
+#     def patch(self, request, id):
+#         try:
+#             user = UserProfile.objects.get(user_id=id)
+#             serializer = ProfileSerializer(user, data=request.data, partial=True)
+#             print(request.data)
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 return Response(
+#                     {"message": "updated successfully"},
+#                     status=status.HTTP_200_OK
+#                 )
+#             return Response(
+#                 {"message": "invalid format"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#         except UserProfile.DoesNotExist:
+#             return Response(
+#                 {"message": "User does not exist"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+# class AdminProfileEdit(APIView):
+#     permission_classes = [IsAuthenticated, IsAdmin]
+#
+#     def patch(self, request, id):
+#         try:
+#             # Look up by user_id
+#             profile = UserProfile.objects.get(user_id=id)
+#
+#             # Pass the profile instance and the data
+#             serializer = ProfileSerializer(profile, data=request.data, partial=True)
+#
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 return Response(
+#                     {
+#                         "message": "updated successfully",
+#                         "data": serializer.data  # Return data to verify the change
+#                     },
+#                     status=status.HTTP_200_OK
+#                 )
+#
+#             # This will tell you EXACTLY what is wrong with your JSON
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#         except UserProfile.DoesNotExist:
+#             return Response(
+#                 {"message": "User Profile for this ID does not exist"},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+# class AdminProfileEdit(APIView):
+#     permission_classes = [IsAuthenticated, IsAdmin]
+#
+#     def patch(self, request, id):
+#         try:
+#             # 1. Get the Profile
+#             profile = UserProfile.objects.get(user_id=id)
+#             user = profile.user  # Access the linked User model
+#
+#             # 2. Update User-level fields if they are in the request
+#             # This ensures first_name and last_name change in the main User table
+#             if 'first_name' in request.data:
+#                 user.first_name = request.data['first_name']
+#             if 'last_name' in request.data:
+#                 user.last_name = request.data['last_name']
+#
+#             user.save()
+#
+#             # 3. Update Profile-level fields (like address, image, and the combined name)
+#             serializer = ProfileSerializer(profile, data=request.data, partial=True)
+#
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 return Response({
+#                     "message": "updated successfully",
+#                     "data": serializer.data
+#                 }, status=status.HTTP_200_OK)
+#
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#         except UserProfile.DoesNotExist:
+#             return Response({"message": "User does not exist"}, status=404)
+
+
+class AdminProfileEdit(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def patch(self, request, id):
+        try:
+            # 1. Fetch the UserProfile using the user_id from the URL
+            profile = UserProfile.objects.get(user_id=id)
+            user = profile.user  # This is the User object where phone_number lives
+
+            # 2. Check if phone_number is in the request and update the User table
+            phone_number = request.data.get('phone_number')
+            if phone_number:
+                user.phone_number = phone_number
+                user.save(update_fields=['phone_number'])
+
+            # 3. Update the Profile fields (name, address, image)
+            serializer = ProfileSerializer(profile, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+
+                # We construct a custom response so you can see both updates
+                return Response({
+                    "message": "User and Profile updated successfully",
+                    "data": {
+                        "phone_number": user.phone_number,
+                        "name": profile.name,
+                        "address": profile.address,
+                        "image": serializer.data.get('image')
+                    }
+                }, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except UserProfile.DoesNotExist:
+            return Response({"message": "User profile not found"}, status=404)
 
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated, IsActiveUser]
@@ -310,7 +439,7 @@ class AdminAllVehiclesListView(generics.ListAPIView):
 
 
 class CollectorView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    # permission_classes = [IsAuthenticated, IsAdmin]
 
     def get(self, request, user_id):
         try:
@@ -322,7 +451,7 @@ class CollectorView(APIView):
             )
         except CollectorModel.DoesNotExist:
             return Response(
-                {"message": "collector profile doesnot exist for this user"},
+                {"message": "collector profile does not exist for this user"},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
@@ -381,6 +510,296 @@ class CollectorView(APIView):
             )
 
 
+# class CollectionCenterView(APIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     def get(self, request):
+#         # Fetch all centers
+#         centers = CollectionCenterModel.objects.all()
+#         # many=True is required when serializing a list of objects
+#         serializer = CollectionCenterSerializer(centers, many=True)
+#         return Response(
+#             {
+#                 "message": "fetched successfully",
+#                 "data": serializer.data  # You must include the data here
+#             },
+#             status=status.HTTP_200_OK
+#         )
+#
+#     def post(self, request):
+#         # Check if collector profile already exists to prevent duplicates
+#         if CollectorModel.objects.filter(user=request.user).exists():
+#             return Response({"message": "You already manage a center"}, status=status.HTTP_400_BAD_REQUEST)
+#
+#         if request.user.is_staff or request.user.is_collector:
+#             serializer = CollectionCenterSerializer(data=request.data)
+#             if serializer.is_valid():
+#                 center_instance = serializer.save()
+#                 CollectorModel.objects.create(
+#                     user=request.user,
+#                     collection_center=center_instance
+#                 )
+#                 return Response({"message": "created successfully"}, status=status.HTTP_201_CREATED)
+#
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#         return Response({"message": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+#
+#     def patch(self, request):
+#         try:
+#             # 1. Get the Collector profile for the logged-in user
+#             collector_profile = request.user.collector_profile
+#             # 2. Get the specific center linked to this collector
+#             center_instance = collector_profile.collection_center
+#         except CollectorModel.DoesNotExist:
+#             return Response({"message": "No center found for this user"}, status=status.HTTP_404_NOT_FOUND)
+#
+#         # 3. Pass the center instance (not the user) to the serializer
+#         serializer = CollectionCenterSerializer(center_instance, data=request.data, partial=True)
+#
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "updated successfully", "data": serializer.data}, status=status.HTTP_200_OK)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CollectionCenterView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            collection_centers = CollectionCenterModel.objects.all()
+            serializer = CollectionCenterSerializer(collection_centers, many=True)
+            return Response(
+                {"message": "fetched successfully",
+                 "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+        except CollectionCenterModel.DoesNotExist:
+            return Response(
+                {"message": "no collection center exist"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+# class CollectionCenterSingleView(APIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     def get(self, request, collector_id):
+#         # 1. Fetch the collector using its own Primary Key (ID)
+#         # If ID 47 is passed, it looks for Collector #47
+#         collector = get_object_or_404(CollectorModel, id=collector_id)
+#
+#         # 2. Check if this collector actually has a center assigned
+#         if not collector.collection_center:
+#             return Response(
+#                 {"error": "This collector does not have an assigned collection center."},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#
+#         # 3. Serialize and return the center data
+#         serializer = CollectionCenterSerializer(collector.collection_center)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class CollectionCenterSingleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id): # Renamed variable to user_id for clarity
+        # 1. Find the Collector profile that belongs to User #52
+        collector = get_object_or_404(CollectorModel, user_id=user_id)
+
+        # 2. Check if this collector has an assigned center
+        if not collector.collection_center:
+            return Response(
+                {"error": "This collector has no assigned collection center."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 3. Serialize the center linked to that collector
+        serializer = CollectionCenterSerializer(collector.collection_center)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CollectionCenterPostPatchView(APIView):
+    # Change collector_id to user_id to match the User Table ID
+    def post(self, request, user_id):
+        # 1. Look for the collector profile using the USER's ID
+        collector = get_object_or_404(CollectorModel, user_id=user_id)
+
+        if not (request.user.is_staff or request.user == collector.user):
+            return Response({"message": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        if collector.collection_center:
+            return Response({"message": "Collector already has a center. Use PATCH."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = CollectionCenterSerializer(data=request.data)
+        if serializer.is_valid():
+            center_instance = serializer.save()
+            collector.collection_center = center_instance
+            collector.save()
+            return Response({"message": "Created and assigned successfully"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, user_id):
+        # Look for the profile using user_id
+        collector = get_object_or_404(CollectorModel, user_id=user_id)
+
+        if not (request.user.is_staff or request.user == collector.user):
+            return Response({"message": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        center_instance = collector.collection_center
+        if not center_instance:
+            return Response({"message": "No center found to update."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CollectionCenterSerializer(center_instance, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Updated successfully"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# class  CollectionCenterPostPatchView(APIView):
+#
+#     def post(self, request, collector_id):
+#         # 1. Fetch the specific collector
+#         collector = get_object_or_404(CollectorModel, id=collector_id)
+#
+#         # 2. Check Permissions (Staff or the collector themselves)
+#         if not (request.user.is_staff or request.user == collector.user):
+#             return Response({"message": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+#
+#         # 3. Check if collector already has a center
+#         if collector.collection_center:
+#             return Response({"message": "Collector already has a center. Use PATCH to update."},
+#                             status=status.HTTP_400_BAD_REQUEST)
+#
+#         serializer = CollectionCenterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             # Create center and link to the specific collector
+#             center_instance = serializer.save()
+#             collector.collection_center = center_instance
+#             collector.save()
+#
+#             return Response({"message": "Created and assigned successfully"}, status=status.HTTP_201_CREATED)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     def patch(self, request, collector_id):
+#         # 1. Fetch the specific collector
+#         collector = get_object_or_404(CollectorModel, id=collector_id)
+#
+#         # 2. Check Permissions
+#         if not (request.user.is_staff or request.user == collector.user):
+#             return Response({"message": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+#
+#         # 3. Get the center associated with this collector
+#         center_instance = collector.collection_center
+#         if not center_instance:
+#             return Response({"message": "No center found for this collector to update."},
+#                             status=status.HTTP_404_NOT_FOUND)
+#
+#         # 4. Update the center instance
+#         serializer = CollectionCenterSerializer(center_instance, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "Updated successfully"}, status=status.HTTP_200_OK)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class CollectionCenterPostPatchView(APIView):
+#
+# def post(self, r):
+# class CollectionCenterPostPatchView(APIView):
+#
+#     def post(self, request, collector_id):
+#         # 1. Fetch the specific collector
+#         collector = get_object_or_404(CollectorModel, id=collector_id)
+#
+#         # 2. Check Permissions (Staff or the collector themselves)
+#         if not (request.user.is_staff or request.user == collector.user):
+#             return Response({"message": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+#
+#         # 3. Check if collector already has a center
+#         if collector.collection_center:
+#             return Response({"message": "Collector already has a center. Use PATCH to update."},
+#                             status=status.HTTP_400_BAD_REQUEST)
+#
+#         serializer = CollectionCenterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             # Create center and link to the specific collector
+#             center_instance = serializer.save()
+#             collector.collection_center = center_instance
+#             collector.save()
+#
+#             return Response({"message": "Created and assigned successfully"}, status=status.HTTP_201_CREATED)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     def patch(self, request, collector_id):
+#         # 1. Fetch the specific collector
+#         collector = get_object_or_404(CollectorModel, id=collector_id)
+#
+#         # 2. Check Permissions
+#         if not (request.user.is_staff or request.user == collector.user):
+#             return Response({"message": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+#
+#         # 3. Get the center associated with this collector
+#         center_instance = collector.collection_center
+#         if not center_instance:
+#             return Response({"message": "No center found for this collector to update."},
+#                             status=status.HTTP_404_NOT_FOUND)
+#
+#         # 4. Update the center instance
+#         serializer = CollectionCenterSerializer(center_instance, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "Updated successfully"}, status=status.HTTP_200_OK)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# # def post(self, request, collector_id):
+#     if request.user.is_staff or request.user.is_collector:
+#         serializer = CollectionCenterSerializer(data=request.data)
+#         if serializer.is_valid():
+#             collection_center_instance = serializer.save()
+#             CollectorModel.objects.create(
+#                 id=collecto
+#                 collection_center=collection_center_instance
+#             )
+#             return Response(
+#                 {"message": "created successfully"},
+#                 status=status.HTTP_200_OK
+#             )
+#
+#         return Response(
+#             serializer.errors,
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+#     return Response(
+#         {"message": "only admin and collector can add collection center"},
+#         status=status.HTTP_403_FORBIDDEN
+#     )
+#
+# def patch(self, request):
+#     if request.user.is_staff and request.user.is_collector:
+#         serializer = CollectionCenterSerializer(request.user, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(
+#                 {"message": "updated successfully"},
+#                 status=status.HTTP_200_OK
+#             )
+#         return Response(
+#             serializer.errors,
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+#     return Response(
+#         {"message": "only admin and collector can update collection center"},
+#         status=status.HTTP_400_BAD_REQUEST
+#     )
+
+
 class InsuranceView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -437,8 +856,6 @@ class InsurancePatchView(APIView):
             )
 
 
-
-
 class ServiceChargeView(APIView):
     # permission_classes = [IsAuthenticated]
 
@@ -478,6 +895,7 @@ class ServiceChargeView(APIView):
 
 class ServiceChargePatchView(APIView):
     permission_classes = [IsAuthenticated]
+
     def patch(self, request, id):
         if request.user.is_staff:
             try:
@@ -571,3 +989,15 @@ class RenewRequestView(APIView):
                 {"detail": "Request not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+
+class AllCollectorView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        all_collectors = CollectorModel.objects.all()
+        serializer = GetAllCollectorSerializer(all_collectors, many=True)
+        return Response(
+            {"data": serializer.data},
+            status=status.HTTP_200_OK
+        )

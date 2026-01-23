@@ -7,6 +7,11 @@ router.register(r'vehicles', views.UserVehicleViewSet, basename='user-vehicle')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path("all-collectors/", views.AllCollectorView.as_view()),
+    path('collector-view/user_id', views.CollectorView.as_view()),
+    path('collection-center/', views.CollectionCenterView.as_view()),
+    path('collection-center/collector/<int:user_id>/', views.CollectionCenterSingleView.as_view()),
+    path('collection-center/<int:user_id>/', views.CollectionCenterPostPatchView.as_view()),
     path('renew-requests/', views.RenewRequestView.as_view(), name='renew-request-list'),
     path('renew-requests/<int:id>/', views.RenewRequestView.as_view(), name='renew-request-detail'),
     path("service-charge/", views.ServiceChargeView.as_view()),
@@ -15,6 +20,7 @@ urlpatterns = [
     path("insurance/<int:id>/", views.InsurancePatchView.as_view()),
     path('signup/', views.SignupView.as_view()),
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    path("profile/<int:id>/", views.AdminProfileEdit.as_view()),
     path("collector-profile/<int:user_id>/", views.CollectorView.as_view()),
     path("admin/users/", views.UserReadView.as_view()),
     path('admin/all-vehicles/', views.AdminAllVehiclesListView.as_view(), name='admin-all-vehicles'),

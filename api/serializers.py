@@ -4,9 +4,9 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from user_profile.models import UserProfile
-# from vehicles import models as user_vehicle_models
+from vehicles import models as user_vehicle_models
 from vehicles.models import UserVehicle, VehicleType, VehicleFuelType, VehicleOwnership
-from collector.models import CollectorModel
+from collector.models import CollectorModel, CollectionCenterModel
 from insurance.models import InsuranceModel
 from service_charge.models import ServiceChargeModel
 from renew_request.models import RenewRequest
@@ -65,10 +65,26 @@ class PasswordSerializer(serializers.Serializer):
         return user
 
 
+# class ProfileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = UserProfile
+#         fields = ("user", "image", "address", "first_name", "last_name",)
+#
+#     def get_image(self, obj):
+#         request = self.context.get("request")
+#         if obj.image and request:
+#             return request.build_absolute_uri(obj.image.url)
+#         return None
+
+
 class ProfileSerializer(serializers.ModelSerializer):
+    # Use 'source' to point to the related User model fields
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+
     class Meta:
         model = UserProfile
-        fields = ("user", "image", "address", "name")
+        fields = ("user", "image", "address", "name", "first_name", "last_name")
 
     def get_image(self, obj):
         request = self.context.get("request")
@@ -280,10 +296,44 @@ class AdminGetAllVehiclesSerializer(serializers.ModelSerializer):
         }
 
 
+class CollectionCenterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CollectionCenterModel
+        fields = ["id", "name", "address", "phone_number", "is_pickup_available"]
+
+
+# class CollectorModelSerializer(serializers.ModelSerializer):
+#     collection_center = CollectionCenterSerializer(read_only=True)
+#     class Meta:
+#         model = CollectorModel
+#         fields = ("user", "collection_center")
+
+
 class CollectorModelSerializer(serializers.ModelSerializer):
+    # We bring in the Center Serializer to handle the nested data
+    collection_center = CollectionCenterSerializer(required=False, allow_null=True)
+
     class Meta:
         model = CollectorModel
-        fields = ("collection_center_name", "collection_center_address", "collection_center_number", "is_pickup_available")
+        fields = ("id", "user", "collection_center")
+
+    def update(self, instance, validated_data):
+        # Extract center data if provided in the PATCH/PUT request
+        center_data = validated_data.pop('collection_center', None)
+
+        if center_data:
+            if instance.collection_center:
+                # Update existing center
+                for attr, value in center_data.items():
+                    setattr(instance.collection_center, attr, value)
+                instance.collection_center.save()
+            else:
+                # Create new center and link it
+                new_center = CollectionCenterModel.objects.create(**center_data)
+                instance.collection_center = new_center
+
+        instance.save()
+        return instance
 
 
 class InsuranceModelSerializer(serializers.ModelSerializer):
@@ -315,3 +365,12 @@ class RenewRequestSerializer(serializers.ModelSerializer):
         ]
         # Total amount is calculated in the model, so we don't want the user to send it
         read_only_fields = ['user', 'total_amount', 'status', 'request_date']
+
+
+
+class GetAllCollectorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CollectorModel
+        fields = "__all__"
+
+
