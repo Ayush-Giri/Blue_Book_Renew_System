@@ -8,7 +8,7 @@ router.register(r'vehicles', views.UserVehicleViewSet, basename='user-vehicle')
 urlpatterns = [
     path('', include(router.urls)),
     path("all-collectors/", views.AllCollectorView.as_view()),
-    path('collector-view/user_id', views.CollectorView.as_view()),
+    path('collector-view/user_id/', views.CollectorView.as_view()),
     path('collection-center/', views.CollectionCenterView.as_view()),
     path('collection-center/collector/<int:user_id>/', views.CollectionCenterSingleView.as_view()),
     path('collection-center/<int:user_id>/', views.CollectionCenterPostPatchView.as_view()),
