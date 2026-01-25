@@ -31,6 +31,8 @@ from django.shortcuts import get_object_or_404
 from api.serializers import GetAllCollectorSerializer
 # from api.serializers import VehicleTaxSerializer
 from vehicles.models import VehicleTax
+from api.serializers import VehicleTaxSerializer
+from vehicles.models import UserVehicle
 
 
 # Create your views here.
@@ -1005,34 +1007,139 @@ class AllCollectorView(APIView):
         )
 
 
-class VehicleTaxView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
-
-    def get(self, request):
-        taxes = VehicleTax.objects.select_related(
-            'vehicle_type', 'ownership_type', 'fuel_type', 'vehicle_capacity'
-        ).all()
-        serializer = VehicleTaxSerializer(taxes, many=True)
-        return Response(serializer.data)
-
+class VehicleTaxPostView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
-        # Only reached if IsAdminOrReadOnly passes (user.is_staff)
-        serializer = VehicleTaxSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.is_staff:
+            serializer = VehicleTaxSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"message": "vehicle tax added successfully"},
+                    status=status.HTTP_200_OK
+                )
+            return Response(
+                {"message": "invalid data", "errors": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            {"message": "operation not allowed"},
+            status=status.HTTP_403_FORBIDDEN
+        )
 
-    def patch(self, request, pk):
-        # Only reached if IsAdminOrReadOnly passes
+
+class VehicleTaxAllGetView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+    def get(self, request):
+        all_taxes = VehicleTax.objects.all()
+        if len(all_taxes) == 0:
+            return Response(
+                {"message": "no taxes availabel"},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        serializer = VehicleTaxSerializer(all_taxes, many=True)
+        return Response(
+            {"message": "all taxes feteched successfully",
+             "data": serializer.data,
+             },
+            status=status.HTTP_200_OK
+        )
+
+
+class VehicleTaxView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, user_vehicle_id):
         try:
-            tax_rule = VehicleTax.objects.get(pk=pk)
-        except VehicleTax.DoesNotExist:
-            return Response({"error": "Tax rule not found"}, status=status.HTTP_404_NOT_FOUND)
+            # 1. Get the specific vehicle owned by the user
+            vehicle = UserVehicle.objects.get(id=user_vehicle_id)
 
-        serializer = VehicleTaxSerializer(tax_rule, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # 2. Use the calculate_tax logic we built in the model
+            tax_amount = vehicle.calculate_tax()
+
+            # 3. Find the actual Rule object to serialize it
+            tax_rule = VehicleTax.objects.filter(
+                vehicle_type=vehicle.vehicle_type,
+                ownership_type=vehicle.ownership_type,
+                fuel_type=vehicle.fuel_type,
+                vehicle_capacity__capacity_value__gte=vehicle.engine_capacity.capacity_value
+            ).order_by('vehicle_capacity__capacity_value').first()
+
+            if not tax_rule:
+                return Response({"message": "No tax rule found for this vehicle's specifications"}, status=404)
+
+            serializer = VehicleTaxSerializer(tax_rule)
+            return Response(
+                {
+                    "message": "Vehicle tax fetched successfully",
+                    "data": serializer.data,
+                    "calculated_amount": tax_amount  # Confirms the final price
+                },
+                status=status.HTTP_200_OK
+            )
+        except UserVehicle.DoesNotExist:
+            return Response({"message": "Vehicle not found"}, status=404)
+
+
+
+    def patch(self, request, user_vehicle_id):
+        if request.user.is_staff:
+            try:
+                tax_rule = VehicleTax.objects.get(id=user_vehicle_id)
+                serializer = VehicleTaxSerializer(tax_rule, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(
+                        {"message": "tax rule updated successfully"},
+                        status=status.HTTP_200_OK
+                    )
+                return Response(
+                    {"message": "invalid", "errors": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except VehicleTax.DoesNotExist:
+                return Response(
+                    {"message": "no such tax rule exists"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            return Response(
+                {"message": "Not allowed"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+
+
+
+#
+# class VehicleTaxView(APIView):
+#     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
+#
+#     def get(self, request):
+#         taxes = VehicleTax.objects.select_related(
+#             'vehicle_type', 'ownership_type', 'fuel_type', 'vehicle_capacity'
+#         ).all()
+#         serializer = VehicleTaxSerializer(taxes, many=True)
+#         return Response(serializer.data)
+#
+#     def post(self, request):
+#         # Only reached if IsAdminOrReadOnly passes (user.is_staff)
+#         serializer = VehicleTaxSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     def patch(self, request, pk):
+#         # Only reached if IsAdminOrReadOnly passes
+#         try:
+#             tax_rule = VehicleTax.objects.get(pk=pk)
+#         except VehicleTax.DoesNotExist:
+#             return Response({"error": "Tax rule not found"}, status=status.HTTP_404_NOT_FOUND)
+#
+#         serializer = VehicleTaxSerializer(tax_rule, data=request.data, partial=True)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

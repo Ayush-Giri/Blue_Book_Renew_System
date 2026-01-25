@@ -7,6 +7,9 @@ router.register(r'vehicles', views.UserVehicleViewSet, basename='user-vehicle')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path("taxes/", views.VehicleTaxPostView.as_view()),
+    path("taxes/all-taxes/", views.VehicleTaxAllGetView.as_view()),
+    path("taxes/<int:user_vehicle_id>/", views.VehicleTaxView.as_view()),
     path("all-collectors/", views.AllCollectorView.as_view()),
     path('collector-view/user_id/', views.CollectorView.as_view()),
     path('collection-center/', views.CollectionCenterView.as_view()),

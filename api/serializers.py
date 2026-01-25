@@ -416,6 +416,32 @@ class GetAllCollectorSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class VehicleTaxSerializer(serializers.ModelSerializer):
+    # Adding StringRelatedField lets the frontend see names like "Private"
+    # instead of just ID numbers like "1"
+    vehicle_type_name = serializers.CharField(source='vehicle_type.name', read_only=True)
+    ownership_type_name = serializers.CharField(source='ownership_type.name', read_only=True)
+    fuel_type_name = serializers.CharField(source='fuel_type.name', read_only=True)
+    capacity_name = serializers.CharField(source='vehicle_capacity.capacity_value', read_only=True)
+
+    class Meta:
+        model = VehicleTax
+        fields = [
+            "id",
+            "vehicle_type",
+            "vehicle_type_name",
+            "ownership_type",
+            "ownership_type_name",
+            "fuel_type",
+            "fuel_type_name",
+            "vehicle_capacity",
+            "capacity_name",
+            # Added this
+            "tax_amount",
+            "fiscal_year"
+        ]
+
+
 
 
 
