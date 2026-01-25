@@ -28,7 +28,7 @@ class CollectorModel(models.Model):
     )
 
     def __str__(self):
-        return f" collector:{self.user.username} | " \
+        return f" collector:{self.user.username} | {self.collection_center} " \
                # f" collection_center: {self.collection_center.name} | " \
                # f" collection_center_address: {self.collection_center.address} | " \
                # f" collection_center_number: {self.collection_center.phone_number}"

@@ -1,5 +1,8 @@
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import BasePermission
+from rest_framework import status, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 
 # class IsActiveUser(BasePermission):
@@ -36,3 +39,13 @@ class IsAdmin(BasePermission):
             and request.user.is_authenticated
             and request.user.is_superuser
         )
+
+
+
+
+# Custom Permission: Admin can do anything, Users can only Read
+class IsAdminOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS: # GET, HEAD, OPTIONS
+            return True
+        return request.user and request.user.is_staff

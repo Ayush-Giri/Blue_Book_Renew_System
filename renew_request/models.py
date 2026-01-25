@@ -62,14 +62,43 @@ class RenewRequest(models.Model):
         verbose_name = "Renew Request"
         verbose_name_plural = "Renew Requests"
 
+    # def save(self, *args, **kwargs):
+    #     # # Automatically calculate total amount if not set
+    #     # # Total = Vehicle Tax + Insurance Price + Service Charge Amount
+    #     # if not self.total_amount:
+    #     #     tax = self.vehicle.current_tax_amount or 0
+    #     #     ins = self.insurance.price or 0
+    #     #     serv = self.service_charge.amount or 0
+    #     #     self.total_amount = tax + ins + serv
+    #     # super().save(*args, **kwargs)
+    #         # 1. Fetch the tax from the vehicle table
+    #         # 2. Fetch insurance price
+    #         # 3. Fetch service charge
+    #
+    #     tax = self.vehicle.current_tax_amount or 0
+    #     ins = self.insurance.price or 0
+    #     serv = self.service_charge.amount or 0
+    #
+    #     # Calculate Total: Sum of Tax + Insurance + Service Charge
+    #     self.total_amount = tax + ins + serv
+
+        # super().save(*args, **kwargs)
+
     def save(self, *args, **kwargs):
-        # Automatically calculate total amount if not set
-        # Total = Vehicle Tax + Insurance Price + Service Charge Amount
-        if not self.total_amount:
-            tax = self.vehicle.current_tax_amount or 0
-            ins = self.insurance.price or 0
-            serv = self.service_charge.amount or 0
-            self.total_amount = tax + ins + serv
+        # 1. Fetch current tax directly from the vehicle's calculation logic
+        # This ensures even if the vehicle table didn't save the tax, we find it now
+        tax = 0
+        if self.vehicle:
+            # If current_tax_amount is empty, trigger the calculation manually
+            tax = self.vehicle.current_tax_amount or self.vehicle.calculate_tax()
+
+        # 2. Fetch prices from related models
+        ins = self.insurance.price if self.insurance else 0
+        serv = self.service_charge.amount if self.service_charge else 0
+
+        # 3. Calculate and set the total
+        self.total_amount = tax + ins + serv
+
         super().save(*args, **kwargs)
 
     def __str__(self):

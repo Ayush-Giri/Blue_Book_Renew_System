@@ -10,6 +10,7 @@ from collector.models import CollectorModel, CollectionCenterModel
 from insurance.models import InsuranceModel
 from service_charge.models import ServiceChargeModel
 from renew_request.models import RenewRequest
+from vehicles.models import VehicleTax
 
 User = get_user_model()
 
@@ -225,6 +226,25 @@ class UserVehicleSerializer(serializers.ModelSerializer):
         }
 
 
+# class UserVehicleSerializer(serializers.ModelSerializer):
+#     # current_tax_amount is read-only because it's calculated on the server
+#     current_tax_amount = serializers.ReadOnlyField()
+#
+#     class Meta:
+#         model = UserVehicle
+#         fields = [
+#             'id', 'brand_and_model', 'vehicle_number', 'chassis_number',
+#             'engine_number', 'vehicle_type', 'ownership_type',
+#             'fuel_type', 'engine_capacity', 'issue_date',
+#             'expiry_date', 'current_tax_amount'
+#         ]
+#
+#     def create(self, validated_data):
+#         # Automatically assign the logged-in user to the vehicle
+#         validated_data['user'] = self.context['request'].user
+#         return super().create(validated_data)
+
+
 # class VehicleTypeSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = user_vehicles_models.VehicleType
@@ -349,22 +369,44 @@ class ServiceChargeSerializer(serializers.ModelSerializer):
 
 
 
+# class RenewRequestSerializer(serializers.ModelSerializer):
+#     # These fields allow us to see the full details in GET requests
+#     # but still use IDs in POST/PATCH
+#     vehicle_details = UserVehicleSerializer(source='vehicle', read_only=True)
+#     insurance_details = InsuranceModelSerializer(source='insurance', read_only=True)
+#
+#     class Meta:
+#         model = RenewRequest
+#         fields = [
+#             'id', 'user', 'vehicle', 'vehicle_details',
+#             'insurance', 'insurance_details', 'service_charge',
+#             'collection_center', 'status', 'total_amount',
+#             'request_date'
+#         ]
+#         # Total amount is calculated in the model, so we don't want the user to send it
+#         read_only_fields = ['user', 'total_amount', 'status', 'request_date']
+
+
 class RenewRequestSerializer(serializers.ModelSerializer):
-    # These fields allow us to see the full details in GET requests
-    # but still use IDs in POST/PATCH
-    vehicle_details = UserVehicleSerializer(source='vehicle', read_only=True)
-    insurance_details = InsuranceModelSerializer(source='insurance', read_only=True)
+    # Read-only details for the frontend to display data
+    # (Assuming you have these serializers defined)
+    # vehicle_details = UserVehicleSerializer(source='vehicle', read_only=True)
 
     class Meta:
         model = RenewRequest
         fields = [
-            'id', 'user', 'vehicle', 'vehicle_details',
-            'insurance', 'insurance_details', 'service_charge',
-            'collection_center', 'status', 'total_amount',
-            'request_date'
+            'id', 'user', 'vehicle', 'insurance', 'service_charge',
+            'collection_center', 'status', 'total_amount', 'request_date'
         ]
-        # Total amount is calculated in the model, so we don't want the user to send it
+        # 'user' and 'total_amount' are set by the server
         read_only_fields = ['user', 'total_amount', 'status', 'request_date']
+
+    def create(self, validated_data):
+        # Logic to ensure the logged-in user is assigned automatically
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            validated_data['user'] = request.user
+        return super().create(validated_data)
 
 
 
@@ -372,5 +414,20 @@ class GetAllCollectorSerializer(serializers.ModelSerializer):
     class Meta:
         model = CollectorModel
         fields = "__all__"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

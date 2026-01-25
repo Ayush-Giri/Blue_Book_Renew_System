@@ -403,17 +403,39 @@ class UserVehicle(models.Model):
         """
         Finds the smallest tax bracket that is >= this vehicle's capacity.
         """
+        # if not (self.vehicle_type and self.ownership_type and self.fuel_type and self.engine_capacity):
+        #     return 0
+        #
+        # # IMPORTANT: Access the numeric value from the ForeignKey object
+        # v_capacity = self.engine_capacity.capacity_value
+        #
+        # tax_rule = VehicleTax.objects.filter(
+        #     vehicle_type=self.vehicle_type,
+        #     ownership_type=self.ownership_type,
+        #     fuel_type=self.fuel_type,
+        #     vehicle_capacity__capacity_value__gte=v_capacity
+        # ).order_by('vehicle_capacity__capacity_value').first()
+        #
+        # return tax_rule.tax_amount if tax_rule else 0
+
+
         if not (self.vehicle_type and self.ownership_type and self.fuel_type and self.engine_capacity):
             return 0
 
-        # IMPORTANT: Access the numeric value from the ForeignKey object
-        v_capacity = self.engine_capacity.capacity_value
+            # Convert CharField to integer for a proper numeric comparison
+        try:
+            current_cap_numeric = int(self.engine_capacity.capacity_value)
+        except ValueError:
+            return 0
 
+            # Find the tax rule where rule capacity is >= vehicle capacity
         tax_rule = VehicleTax.objects.filter(
             vehicle_type=self.vehicle_type,
             ownership_type=self.ownership_type,
-            fuel_type=self.fuel_type,
-            vehicle_capacity__capacity_value__gte=v_capacity
+            fuel_type=self.fuel_type
+        ).extra(
+            where=["CAST(capacity_value AS INTEGER) >= %s"],
+            params=[current_cap_numeric]
         ).order_by('vehicle_capacity__capacity_value').first()
 
         return tax_rule.tax_amount if tax_rule else 0
