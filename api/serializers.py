@@ -66,18 +66,6 @@ class PasswordSerializer(serializers.Serializer):
         return user
 
 
-# class ProfileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = UserProfile
-#         fields = ("user", "image", "address", "first_name", "last_name",)
-#
-#     def get_image(self, obj):
-#         request = self.context.get("request")
-#         if obj.image and request:
-#             return request.build_absolute_uri(obj.image.url)
-#         return None
-
-
 class ProfileSerializer(serializers.ModelSerializer):
     # Use 'source' to point to the related User model fields
     first_name = serializers.CharField(source='user.first_name', read_only=True)
@@ -226,29 +214,6 @@ class UserVehicleSerializer(serializers.ModelSerializer):
         }
 
 
-# class UserVehicleSerializer(serializers.ModelSerializer):
-#     # current_tax_amount is read-only because it's calculated on the server
-#     current_tax_amount = serializers.ReadOnlyField()
-#
-#     class Meta:
-#         model = UserVehicle
-#         fields = [
-#             'id', 'brand_and_model', 'vehicle_number', 'chassis_number',
-#             'engine_number', 'vehicle_type', 'ownership_type',
-#             'fuel_type', 'engine_capacity', 'issue_date',
-#             'expiry_date', 'current_tax_amount'
-#         ]
-#
-#     def create(self, validated_data):
-#         # Automatically assign the logged-in user to the vehicle
-#         validated_data['user'] = self.context['request'].user
-#         return super().create(validated_data)
-
-
-# class VehicleTypeSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = user_vehicles_models.VehicleType
-#         fields = ("name", )
 
 
 class VehicleOwnerShipSerializer(serializers.ModelSerializer):
@@ -256,30 +221,6 @@ class VehicleOwnerShipSerializer(serializers.ModelSerializer):
         model = user_vehicles_models.VehicleOwnership
         fields = ("id", "name",)
 
-
-#
-# class VehicleFuelTypeSerializer(serializers.ModelSerializer):
-#     # This tells DRF: We are working with a Django model
-#     # VehicleFuelType table in the database
-#     # Only
-#     # the
-#     # name
-#     # field is exposed
-#     # Serializer
-#     # will:
-#     #
-#     # ✅ Read
-#     # only
-#     # name
-#     # from the model
-#     #
-#     # ✅ Accept
-#     # only
-#     # name
-#     # from incoming JSON
-#     class Meta:
-#         model = user_vehicles_models.VehicleFuelType
-#         fields = ("name", )
 
 
 class VehicleEngineCapacitySerializer(serializers.ModelSerializer):
@@ -322,13 +263,6 @@ class CollectionCenterSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "address", "phone_number", "is_pickup_available"]
 
 
-# class CollectorModelSerializer(serializers.ModelSerializer):
-#     collection_center = CollectionCenterSerializer(read_only=True)
-#     class Meta:
-#         model = CollectorModel
-#         fields = ("user", "collection_center")
-
-
 class CollectorModelSerializer(serializers.ModelSerializer):
     # We bring in the Center Serializer to handle the nested data
     collection_center = CollectionCenterSerializer(required=False, allow_null=True)
@@ -366,25 +300,6 @@ class ServiceChargeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceChargeModel
         fields = ("id", "amount", "fiscal_year")
-
-
-
-# class RenewRequestSerializer(serializers.ModelSerializer):
-#     # These fields allow us to see the full details in GET requests
-#     # but still use IDs in POST/PATCH
-#     vehicle_details = UserVehicleSerializer(source='vehicle', read_only=True)
-#     insurance_details = InsuranceModelSerializer(source='insurance', read_only=True)
-#
-#     class Meta:
-#         model = RenewRequest
-#         fields = [
-#             'id', 'user', 'vehicle', 'vehicle_details',
-#             'insurance', 'insurance_details', 'service_charge',
-#             'collection_center', 'status', 'total_amount',
-#             'request_date'
-#         ]
-#         # Total amount is calculated in the model, so we don't want the user to send it
-#         read_only_fields = ['user', 'total_amount', 'status', 'request_date']
 
 
 class RenewRequestSerializer(serializers.ModelSerializer):
